@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presupuesto Eléctrico</title>
+  <meta name="description" content="Generador de presupuestos para trabajos eléctricos">
+
+  <!-- PWA manifest inline -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Presupuesto">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f4f1;
+      --surface: #ffffff;
+      --surface2: #f0efec;
+      --border: rgba(0,0,0,0.1);
+      --border2: rgba(0,0,0,0.18);
+      --text: #1a1a1a;
+      --text2: #666;
+      --text3: #999;
+      --accent: #f5c518;
+      --accent-dark: #1a1a1a;
+      --radius: 10px;
+      --radius-sm: 6px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111;
+        --surface: #1e1e1e;
+        --surface2: #2a2a2a;
+        --border: rgba(255,255,255,0.1);
+        --border2: rgba(255,255,255,0.18);
+        --text: #f0f0f0;
+        --text2: #aaa;
+        --text3: #666;
+      }
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 2rem;
+    }
+
+    .topbar {
+      background: var(--accent-dark);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .topbar-icon { color: var(--accent); font-size: 22px; }
+    .topbar-title { color: #fff; font-size: 15px; font-weight: 600; flex: 1; }
+    .topbar-sub { color: #888; font-size: 11px; margin-top: 1px; }
+
+    .container { max-width: 600px; margin: 0 auto; padding: 16px; }
+
+    .section {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text2);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-title i { font-size: 14px; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .row.full { grid-template-columns: 1fr; }
+    .row:last-child { margin-bottom: 0; }
+
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; color: var(--text2); font-weight: 500; }
+
+    input, textarea, select {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      padding: 9px 11px;
+      border: 0.5px solid var(--border2);
+      border-radius: var(--radius-sm);
+      background: var(--surface2);
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+      width: 100%;
+      -webkit-appearance: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: #888; }
+    textarea { resize: vertical; min-height: 70px; }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23999' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; }
+
+    /* Items table */
+    .items-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; min-width: 380px; }
+    th {
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--text2); text-align: left; padding: 6px 6px;
+      border-bottom: 0.5px solid var(--border2);
+    }
+    td { padding: 3px 3px; vertical-align: middle; }
+    td input {
+      font-size: 13px; padding: 7px 8px;
+      border: 0.5px solid var(--border);
+      border-radius: 5px;
+    }
+    td input:focus { border-color: #888; }
+    .col-desc { width: 44%; }
+    .col-qty  { width: 16%; }
+    .col-price{ width: 24%; }
+    .col-sub  { width: 13%; }
+    .col-del  { width: 6%; }
+    .td-sub   { text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; padding-right: 6px; color: var(--text); white-space: nowrap; }
+    .btn-del  { background: none; border: none; color: var(--text3); cursor: pointer; padding: 5px 6px; border-radius: 4px; font-size: 15px; line-height: 1; display: flex; align-items: center; }
+    .btn-del:active { background: #fee; color: #c00; }
+
+    .btn-add {
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+      color: var(--text2); background: none;
+      border: 0.5px dashed var(--border2);
+      border-radius: var(--radius-sm); padding: 9px 14px;
+      cursor: pointer; width: 100%;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-add:active { background: var(--surface2); }
+
+    .totals { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+    .total-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); padding: 2px 0; }
+    .total-row.grand { font-size: 16px; font-weight: 600; color: var(--text); padding-top: 8px; margin-top: 4px; border-top: 0.5px solid var(--border2); }
+
+    .check-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    .check-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-dark); flex-shrink: 0; }
+    .check-row label { font-size: 13px; color: var(--text2); cursor: pointer; }
+
+    /* Actions */
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+    .btn-pdf {
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+      color: #fff; background: var(--accent-dark);
+      border: none; border-radius: var(--radius); padding: 14px 16px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: .15s;
+    }
+    .btn-pdf:active { transform: scale(.97); opacity: .9; }
+    .btn-preview {
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+      color: var(--text); background: var(--surface);
+      border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 14px 16px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-preview:active { background: var(--surface2); }
+    .note { font-size: 11px; color: var(--text3); text-align: center; margin-top: 10px; }
+
+    /* Modal */
+    .modal-bg {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.55); z-index: 200;
+      align-items: flex-end; justify-content: center;
+      padding: 0;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: 16px 16px 0 0;
+      padding: 20px 16px 32px; width: 100%; max-width: 600px;
+      max-height: 88vh; overflow-y: auto;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-header h2 { font-size: 14px; font-weight: 600; }
+    .modal-close { background: none; border: none; cursor: pointer; color: var(--text2); font-size: 20px; line-height: 1; padding: 2px; display: flex; }
+
+    .preview-box { font-size: 13px; color: var(--text); line-height: 1.6; }
+    .preview-box .pv-header { margin-bottom: 12px; }
+    .preview-box .pv-header strong { font-size: 15px; display: block; }
+    .preview-box .pv-meta { background: var(--surface2); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 12px; margin-bottom: 12px; color: var(--text2); }
+    .preview-box table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0; }
+    .preview-box th { background: var(--surface2); padding: 5px 8px; text-align: left; border: 0.5px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+    .preview-box td { padding: 5px 8px; border: 0.5px solid var(--border); }
+    .preview-box .pv-totals { text-align: right; margin-top: 8px; font-size: 13px; }
+    .preview-box .pv-footer { margin-top: 10px; font-size: 11px; color: var(--text3); }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <i class="ti ti-bolt topbar-icon" aria-hidden="true"></i>
+  <div>
+    <div class="topbar-title">Presupuesto eléctrico</div>
+    <div class="topbar-sub">Completá y descargá el PDF</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Electricista -->
+  <div class="section">
+    <div class="section-title"><i class="ti ti-user" aria-hidden="true"></i> Datos del electricista</div>
+    <div class="row">
+      <div class="field"><label>Nombre completo</label><input id="elec-nombre" type="text" placeholder="Juan Pérez" autocomplete="name"></div>
+      <div class="field"><label>Teléfono</label><input id="elec-tel" type="tel" placeholder="341 555-1234" autocomplete="tel"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Instagram</label><input id="elec-ig" type="text" placeholder="@usuario"></div>
+      <div class="field"><label>Email (opcional)</label><input id="elec-email" type="email" placeholder="correo@mail.com" autocomplete="email"></div>
+    </div>
+  </div>
+
+  <!-- Cliente -->
+  <div class="section">
+    <div class="section-title"><i class="ti ti-building" aria-hidden="true"></i> Datos del cliente y obra</div>
+    <div class="row">
+      <div class="field"><label>Cliente</label><input id="cli-nombre" type="text" placeholder="Nombre del cliente"></div>
+      <div class="field"><label>Teléfono cliente</label><input id="cli-tel" type="tel" placeholder="341 555-9876"></div>
+    </div>
+    <div class="row full">
+      <div class="field"><label>Dirección de la obra</label><input id="cli-dir" type="text" placeholder="Calle, número, ciudad"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Fecha</label><input id="fecha" type="date"></div>
+      <div class="field"><label>Nro. de presupuesto</label><input id="nro" type="text" placeholder="0042"></div>
+    </div>
+  </div>
+
+  <!-- Items -->
+  <div class="section">
+    <div class="section-title"><i class="ti ti-list-details" aria-hidden="true"></i> Ítems del trabajo</div>
+    <div class="items-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-desc">Descripción</th>
+            <th class="col-qty">Cant.</th>
+            <th class="col-price">P. unit.</th>
+            <th class="col-sub">Total</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+      </table>
+    </div>
+    <button class="btn-add" onclick="addItem()"><i class="ti ti-plus" aria-hidden="true"></i> Agregar ítem</button>
+    <div class="totals">
+      <div class="total-row"><span>Subtotal</span><span id="subtotal">$0,00</span></div>
+      <div class="total-row" id="iva-row" style="display:none"><span>IVA (21%)</span><span id="iva-val">$0,00</span></div>
+      <div class="total-row grand"><span>TOTAL</span><span id="total">$0,00</span></div>
+    </div>
+  </div>
+
+  <!-- Condiciones -->
+  <div class="section">
+    <div class="section-title"><i class="ti ti-notes" aria-hidden="true"></i> Condiciones y notas</div>
+    <div class="row">
+      <div class="field"><label>Validez del presupuesto</label><input id="validez" type="text" placeholder="Ej: 15 días hábiles"></div>
+      <div class="field">
+        <label>Forma de pago</label>
+        <select id="pago">
+          <option>50% anticipado, 50% al finalizar</option>
+          <option>100% al finalizar</option>
+          <option>100% anticipado</option>
+          <option>A convenir</option>
+        </select>
+      </div>
+    </div>
+    <div class="row full">
+      <div class="field"><label>Observaciones</label><textarea id="obs" placeholder="Materiales incluidos/excluidos, condiciones especiales..."></textarea></div>
+    </div>
+    <div class="check-row">
+      <input type="checkbox" id="add-iva" onchange="toggleIva(this.checked)">
+      <label for="add-iva">Incluir IVA (21%) en el total</label>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn-preview" onclick="showPreview()"><i class="ti ti-eye" aria-hidden="true"></i> Vista previa</button>
+    <button class="btn-pdf" onclick="generatePDF()"><i class="ti ti-download" aria-hidden="true"></i> Descargar PDF</button>
+  </div>
+  <p class="note">El PDF se genera en tu dispositivo — sin servidor, sin internet</p>
+
+</div><!-- /container -->
+
+<!-- Modal preview -->
+<div class="modal-bg" id="modal" onclick="closeModalBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Vista previa</h2>
+      <button class="modal-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="preview-box" id="preview-content"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+  let items = [];
+  let ivaEnabled = false;
+  let counter = 0;
+
+  function fmt(n) {
+    return '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function g(id) { return (document.getElementById(id)?.value || '').trim(); }
+
+  function addItem(desc='', qty=1, price=0) {
+    items.push({ id: 'i' + counter++, desc, qty, price });
+    renderItems();
+  }
+
+  function removeItem(id) {
+    items = items.filter(i => i.id !== id);
+    renderItems();
+  }
+
+  function renderItems() {
+    const tbody = document.getElementById('items-body');
+    tbody.innerHTML = '';
+    items.forEach((item, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="col-desc"><input type="text" value="${escHtml(item.desc)}" placeholder="Descripción" oninput="items[${idx}].desc=this.value"></td>
+        <td class="col-qty"><input type="number" value="${item.qty}" min="1" step="1" inputmode="numeric" oninput="items[${idx}].qty=parseFloat(this.value)||0;updateTotals();updateRowSub(${idx})"></td>
+        <td class="col-price"><input type="number" value="${item.price||''}" min="0" step="100" inputmode="decimal" placeholder="0" oninput="items[${idx}].price=parseFloat(this.value)||0;updateTotals();updateRowSub(${idx})"></td>
+        <td class="col-sub td-sub" id="sub-${idx}">${fmt(item.qty*item.price)}</td>
+        <td class="col-del"><button class="btn-del" onclick="removeItem('${item.id}')" aria-label="Eliminar"><i class="ti ti-x"></i></button></td>`;
+      tbody.appendChild(tr);
+    });
+    updateTotals();
+  }
+
+  function updateRowSub(idx) {
+    const el = document.getElementById('sub-' + idx);
+    if (el && items[idx]) el.textContent = fmt(items[idx].qty * items[idx].price);
+  }
+
+  function updateTotals() {
+    const sub = items.reduce((a, i) => a + i.qty * i.price, 0);
+    const iva = ivaEnabled ? sub * 0.21 : 0;
+    document.getElementById('subtotal').textContent = fmt(sub);
+    document.getElementById('iva-val').textContent = fmt(iva);
+    document.getElementById('total').textContent = fmt(sub + iva);
+    document.getElementById('iva-row').style.display = ivaEnabled ? 'flex' : 'none';
+  }
+
+  function toggleIva(v) { ivaEnabled = v; updateTotals(); }
+
+  function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+  function showPreview() {
+    const sub = items.reduce((a, i) => a + i.qty * i.price, 0);
+    const iva = ivaEnabled ? sub * 0.21 : 0;
+    const rows = items.map(i =>
+      `<tr><td>${escHtml(i.desc)||'-'}</td><td style="text-align:center">${i.qty}</td><td style="text-align:right">${fmt(i.price)}</td><td style="text-align:right;font-weight:500">${fmt(i.qty*i.price)}</td></tr>`
+    ).join('');
+    document.getElementById('preview-content').innerHTML = `
+      <div class="pv-header">
+        <strong>${escHtml(g('elec-nombre'))||'Electricista'}</strong>
+        <span style="font-size:12px;color:var(--text2)">${[g('elec-tel'),g('elec-ig'),g('elec-email')].filter(Boolean).join(' · ')}</span>
+      </div>
+      <div class="pv-meta">
+        <strong>Cliente:</strong> ${escHtml(g('cli-nombre'))||'-'} &nbsp;·&nbsp;
+        <strong>Obra:</strong> ${escHtml(g('cli-dir'))||'-'}<br>
+        <strong>Fecha:</strong> ${g('fecha')||'-'} &nbsp;·&nbsp;
+        <strong>Presupuesto nro:</strong> ${g('nro')||'-'}
+      </div>
+      <table>
+        <thead><tr><th>Descripción</th><th>Cant.</th><th>P. Unit.</th><th>Total</th></tr></thead>
+        <tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:var(--text2)">Sin ítems</td></tr>'}</tbody>
+      </table>
+      <div class="pv-totals">
+        Subtotal: <strong>${fmt(sub)}</strong><br>
+        ${ivaEnabled ? `IVA 21%: <strong>${fmt(iva)}</strong><br>` : ''}
+        <span style="font-size:15px">TOTAL: <strong>${fmt(sub+iva)}</strong></span>
+      </div>
+      <div class="pv-footer">
+        Pago: ${g('pago')} · Validez: ${g('validez')||'-'}
+        ${g('obs') ? '<br>Obs: '+escHtml(g('obs')) : ''}
+      </div>`;
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function closeModal() { document.getElementById('modal').classList.remove('open'); }
+  function closeModalBg(e) { if (e.target === document.getElementById('modal')) closeModal(); }
+
+  function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const sub = items.reduce((a, i) => a + i.qty * i.price, 0);
+    const iva = ivaEnabled ? sub * 0.21 : 0;
+    const total = sub + iva;
+
+    // Header bar
+    doc.setFillColor(26, 26, 26);
+    doc.rect(0, 0, W, 30, 'F');
+    doc.setTextColor(245, 197, 24);
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+    doc.text('PRESUPUESTO DE TRABAJO ELECTRICO', 14, 13);
+    doc.setTextColor(180, 180, 180); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+    const nroTxt = g('nro') ? 'Nro. ' + g('nro') + '   ' : '';
+    const fechaTxt = 'Fecha: ' + (g('fecha') || new Date().toLocaleDateString('es-AR'));
+    doc.text(nroTxt + fechaTxt, 14, 22);
+
+    // Electricista strip
+    doc.setFillColor(245, 245, 240);
+    doc.rect(0, 30, W, 16, 'F');
+    doc.setTextColor(30, 30, 30); doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.text(g('elec-nombre') || 'Electricista', 14, 38);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+    const contact = [g('elec-tel'), g('elec-ig'), g('elec-email')].filter(Boolean).join('  ·  ');
+    doc.text(contact, 14, 43);
+
+    // Client box
+    let y = 56;
+    doc.setFillColor(235, 244, 255);
+    doc.roundedRect(10, y - 5, W - 20, 24, 3, 3, 'F');
+    doc.setFontSize(8); doc.setTextColor(50, 50, 50);
+    doc.setFont('helvetica', 'bold'); doc.text('CLIENTE', 14, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(g('cli-nombre') || '-', 14, y + 5);
+    doc.text(g('cli-tel') || '', 14, y + 10);
+    doc.setFont('helvetica', 'bold'); doc.text('DIRECCION DE OBRA', W / 2, y);
+    doc.setFont('helvetica', 'normal');
+    const dirLines = doc.splitTextToSize(g('cli-dir') || '-', W / 2 - 14);
+    doc.text(dirLines, W / 2, y + 5);
+
+    // Items table
+    y = 90;
+    const tableRows = items.map(i => [
+      i.desc || '-',
+      String(i.qty),
+      fmt(i.price),
+      fmt(i.qty * i.price)
+    ]);
+    doc.autoTable({
+      startY: y,
+      head: [['Descripción del trabajo', 'Cant.', 'Precio unitario', 'Total']],
+      body: tableRows.length ? tableRows : [['Sin ítems cargados', '', '', '']],
+      theme: 'grid',
+      headStyles: { fillColor: [26, 26, 26], textColor: [245, 197, 24], fontSize: 8, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9, textColor: [50, 50, 50] },
+      columnStyles: {
+        1: { halign: 'center', cellWidth: 18 },
+        2: { halign: 'right', cellWidth: 36 },
+        3: { halign: 'right', cellWidth: 30, fontStyle: 'bold' }
+      },
+      margin: { left: 10, right: 10 },
+      styles: { cellPadding: 3 }
+    });
+
+    // Totals
+    let yf = doc.lastAutoTable.finalY + 6;
+    const totX = W - 90 - 10;
+    doc.setFontSize(9); doc.setTextColor(80, 80, 80); doc.setFont('helvetica', 'normal');
+    doc.text('Subtotal:', totX, yf);
+    doc.text(fmt(sub), W - 10, yf, { align: 'right' });
+    if (ivaEnabled) {
+      yf += 5;
+      doc.text('IVA (21%):', totX, yf);
+      doc.text(fmt(iva), W - 10, yf, { align: 'right' });
+    }
+    yf += 2;
+    doc.setDrawColor(180, 180, 180); doc.line(totX, yf, W - 10, yf);
+    yf += 6;
+    doc.setFontSize(12); doc.setFont('helvetica', 'bold'); doc.setTextColor(26, 26, 26);
+    doc.text('TOTAL:', totX, yf);
+    doc.text(fmt(total), W - 10, yf, { align: 'right' });
+
+    // Footer details
+    yf += 10;
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(100, 100, 100);
+    doc.text('Forma de pago: ' + g('pago'), 10, yf);
+    if (g('validez')) { yf += 4; doc.text('Validez: ' + g('validez'), 10, yf); }
+    if (g('obs')) {
+      yf += 4;
+      const obsLines = doc.splitTextToSize('Observaciones: ' + g('obs'), W - 20);
+      doc.text(obsLines, 10, yf);
+    }
+
+    // Bottom bar
+    doc.setFillColor(26, 26, 26); doc.rect(0, H - 12, W, 12, 'F');
+    doc.setTextColor(150, 150, 150); doc.setFontSize(7);
+    doc.text('Presupuesto generado digitalmente — sujeto a aceptacion del cliente', W / 2, H - 5, { align: 'center' });
+
+    const cli = g('cli-nombre').replace(/\s+/g, '_') || 'cliente';
+    const nroFile = g('nro') ? '_' + g('nro') : '';
+    doc.save(`presupuesto${nroFile}_${cli}.pdf`);
+  }
+
+  // PWA service worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+
+  // Init
+  document.getElementById('fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('nro').value = '0001';
+  addItem('', 1, 0);
+</script>
+</body>
+</html>
